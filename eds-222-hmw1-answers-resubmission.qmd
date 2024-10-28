@@ -1,0 +1,260 @@
+---
+title: "Week1 Homework"
+date: "Oct 2, 2024"
+author: "Karol Paya"
+execute: 
+  eval: True
+  warning: False
+  message: False
+format:
+  html:
+    toc: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#Load libraries
+library(dplyr)
+library(here)
+library(maps)
+library(tidyverse)
+```
+
+```{r}
+#Load data
+crowdsourced <- readRDS(file.path("data", "airpol-PK-crowdsourced.RDS"))
+govt <- readRDS(file.path("data", "airpol-PK-govt.RDS"))
+```
+
+### Question 1
+
+a)  These dataframes have one row per pollution observation. How many pollution records are in each dataset? 
+
+crowdourced: 5488 observations 
+
+govt: 1960 observations
+
+```{r, message=FALSE, warning=FALSE}
+print(count(crowdsourced))
+print(count(govt))
+```
+
+b)  Each monitor is located at a unique latitude and longitude location. How many unique monitors are in each dataset?
+
+```{r, message=FALSE, warning=FALSE}
+# Creating a new variable that groups lat & long to find # of unique monitors
+crowdsourced_new <- crowdsourced %>%
+  group_by(latitude, longitude) %>%
+  mutate(id = cur_group_id()) 
+
+govt_new <- govt %>%
+  group_by(latitude, longitude) %>%
+  mutate(id = cur_group_id()) 
+
+monitors=nrow(crowdsourced_new)+nrow(govt_new)
+
+print(paste ("The total number of unique monitors is: ",monitors))
+```
+
+### Question 2
+
+The goal of pollution monitoring in Lahore is to measure the average pollution conditions across the city.
+
+1.  What is the *population* in this setting? Please be precise.
+
+In this setting, the population is all the air quality measurements in Lahore, Pakistan, specifically the levels of air pollutants (PM 2.5) between Nov 2018 to Nov 2019.
+
+2.  What are the *samples* in this setting? Please be precise.
+
+The samples are crowdsourced data and goverment data.
+
+3.  These samples were not randomly collected from across locations in Lahore. Given the sampling approaches described above, discuss possible biases that may enter when we use these samples to construct estimates of population parameters. 
+
+**Bias in Crowdsource Data:**
+
+-   The data were collected by individual households who opted to install monitors in their homes. This voluntary participation introduces biases that can affect the estimates of population parameters.
+-   Since the data was not randomly collected across different locations in Lahore, there is a risk that certain areas may be overrepresented (e.g., wealthier neighborhoods vs. lower-income areas), this causes a geographical bias. 
+
+**Bias in Government Data: **
+
+- The government data may not accurately reflect the true air quality across the city. The strategic placement of government monitors in areas with cleaner air can lead to underrepresentation of polluted zones.
+
+### Question 3
+
+1.  For both the government data and the crowd-sourced data, report the sample mean, sample minimum, and sample maximum value of PM 2.5 (measured in $\mu g/m^3$).
+
+```{r}
+# Compute the mean, min and max of goverment data
+print(paste ("The goverment data sample mean of PM 2.5 is: ", round(mean(govt$PM),2), "μg/m3"))
+print(paste ("The goverment data sample minimum of PM 2.5 is: ", round(min(govt$PM),2), "μg/m3"))
+print(paste ("The goverment data sample maximum of PM 2.5 is: ", round(max(govt$PM),2), "μg/m3"))
+
+# Compute the mean, min and max of crowd-sourced data
+print(paste ("The crowd-sourced data sample mean of PM 2.5 is: ", round(mean(crowdsourced$PM),2), "μg/m3"))
+print(paste ("The crowd-sourced data sample minimum of PM 2.5 is: ", round(min(crowdsourced$PM),2), "μg/m3"))
+print(paste ("The crowd-sourced data sample maximum of PM 2.5 is: ", round(max(crowdsourced$PM),2), "μg/m3"))
+```
+
+2.  Discuss any key differences that you see between these two samples.
+
+Mean: The crowd-sourced data shows a significantly higher average concentration of PM 2.5 compared to government data. This indicates that the crowd-sourced measurements are capturing more polluted areas.
+
+Minimum: The minimum value in the government data is lower than that in the crowd-sourced data, possibly due to the location where the goverment placed their meters.
+
+Maximum: The crowd-sourced data has a much higher maximum value, indicating that it has captured poor air quality. Again, this could be due to localized pollution sources not captured in the government data.
+
+3.  Are the differences in mean pollution as expected, given what we know about the sampling strategies?
+
+Yes, the differences in mean pollution are as expected given the sampling strategies. The calculations support the idea that the crowd-sourced data provides a more accurate representation of air quality, reflecting a higher average than the government dataset. 
+
+This discrepancy arises because the government has most likely placed monitoring stations in areas of the city with better air quality, leading to potentially biased measurements and underreporting of pollution levels. 
+
+In contrast, the monitors from the crowd-sourced locations better represent the actual air pollution levels in Lahore. However, it's important to note that due to the voluntary nature of the crowd-sourced installations, this data may still not provide a completely accurate reflection.
+
+### Question 4
+
+Use the location of the air pollution stations for both of the sampling strategies to generate a map showing locations of each observation. Color the two samples with different colors to highlight how each sample obtains measurements from different parts of the city.
+
+```{r}
+#Creating the map of Pakistan
+pakistan_map <- map_data("world") %>% 
+  filter(region == "Pakistan")
+
+ggplot() +
+  geom_polygon(data = pakistan_map, aes(x = long, y = lat, group = group)) +
+  geom_point(data = crowdsourced, aes(x = longitude, y = latitude, color = "crowdsourced"), size =2) +
+  geom_point(data = govt, aes(x = longitude, y = latitude, color = "govt"), size = 3, shape = 17) +
+  theme_minimal() +
+  labs(title = "Map of Air Quality Monitors in Pakistan",
+       x = "Longitude",
+       y = "Latitude",
+      color = "Source of Monitoring") +
+  theme(legend.position = "right")
+```
+
+```{r, message=FALSE, warning=FALSE}
+#Creating map of Lahore
+ggplot() +
+  geom_point(data = crowdsourced, aes(x = longitude, y = latitude, color = "crowdsourced"), size =2) +
+  geom_point(data = govt, aes(x = longitude, y = latitude, color = "govt"), size = 3, shape = 17) +
+  theme_minimal() +
+  labs(title = "Air Quality Monitors in Pakistan",
+       x = "Longitude",
+       y = "Latitude",
+      color = "Source of Monitoring") +
+  theme(legend.position = "right")
+```
+
+### Question 5
+
+The local newspaper in Pakistan, *Dawn*, claims that the government is misreporting the air pollution levels in Lahore.
+Do the locations of monitors in question 4, relative to crowd-sourced monitors, suggest anything about a possible political bias?
+
+the lat and long ranges for the area covering Lahore, Pakistan is approx.31.3 - 31.7, 74.2-74.5 (Google Maps).
+As shown on the map this only covers a small section of the city.
+When comparing the monitors from the govt vs. crowd-sourced, we can observed that the gov monitors are located in the same area, indicating a political bias - this area could have been strategically place in a clean-air space which will misrepresent the whole city.
+
+```{r, message=FALSE, warning=FALSE}
+#adjust map with the space covering Lahore
+
+ggplot() +
+  geom_point(data = crowdsourced, aes(x = longitude, y = latitude, color = "crowdsourced"), size =2) +
+  geom_point(data = govt, aes(x = longitude, y = latitude, color = "govt"), size = 3, shape = 17) +
+  theme_minimal() +
+  labs(title = "Air Quality Monitors in Pakistan",
+       x = "Longitude",
+       y = "Latitude",
+      color = "Source of Monitoring") +
+  theme(legend.position = "right") +
+  xlim(74.2, 74.5) +
+  ylim(31.3, 31.7)
+```
+
+### Question 6
+
+Given the recent corruption in air quality reporting, the Prime Minister of Pakistan has hired an independent body of environmental data scientists to create an unbiased estimate of the mean PM 2.5 across Lahore using some combination of both government stations and crowd sourced observations.
+
+NASA's satellite data indicates that the average PM across Lahore is 89.2 $\mu g/m^3$.
+Since this is the most objective estimate of population-level PM 2.5 available, your goal is to match this mean as closely as possible by creating a new ground-level monitoring sample that draws on both the government and crowd-sourced samples.
+
+#### Question 6.1
+
+First, generate a *random sample* of size $n=1000$ air pollution records by (i) pooling observations across the government and the crowd-sourced data; and (ii) drawing observations at random from this pooled sample.
+
+::: callout-tip
+`bind_rows()` may be helpful.
+:::
+
+```{r, message=FALSE, warning=FALSE}
+#pools observations from the two datasets
+set.seed(4321)
+pooled_obs <- bind_rows(govt, crowdsourced)
+
+random <- sample_n(pooled_obs,1000)
+
+print(random)
+```
+
+Second, create a *stratified random sample*.
+Do so by (i) stratifying your pooled data-set into strata of 0.01 degrees of latitude, and (ii) randomly sampling 200 air pollution observations from each stratum.
+
+i)  stratifying your pooled data-set into strata of 0.01 degrees of latitude
+
+```{r, message=FALSE, warning=FALSE}
+# creating strata -rounding down the latitude to the nearest 0.01 degree and grouping them
+
+stratified_data<-pooled_obs %>%
+  mutate(latitude_strata = round(latitude, 2)) %>%
+  group_by(latitude_strata)
+
+print(stratified_data)
+```
+
+ii) randomly sampling 200 air pollution observations from each stratum
+
+```{r, message=FALSE, warning=FALSE}
+# randomly sampling 200 obs from each stratum
+stratified_data <- stratified_data %>%
+  slice_sample(n = 200, replace = FALSE) 
+print(stratified_data)
+
+#checking each strata has 200 samples
+stratified_data_table<-stratified_data %>%
+  summarise(count=n())
+print(stratified_data_table)
+```
+
+#### Question 6.2
+
+Compare estimated means of PM 2.5 for each sampling strategy to the NASA estimate of 89.2 $\mu g/m^3$.
+
+1.  Which sample seems to match the satellite data best?
+
+```{r}
+# Find the mean of the stratified sample
+strat_mean <- round(mean(stratified_data$PM), 2)
+
+print(paste0("The mean of the stratified data is ", strat_mean, "."))
+
+# Find the mean of the random sample
+comb_mean <- round(mean(random$PM), 2)
+
+print(paste0("The mean of the random sample is ", comb_mean, "."))
+```
+
+When comparing the estimated means of PM 2.5 for each sampling strategy to the NASA estimate of 89.2 µg/m³, the stratified sample mean of appears to be closer to the NASA estimate than the random sample mean. This is likely due to the stratified approach, which groups data by similar latitude, thereby reducing the bias introduced by government sensors that are all located in a similar geographic area.
+
+However, it is important to note that that both sampling methods still have inaccuracies:
+
+1. The stratified method incorporates significantly more crowd-sourced data (900 out of 1,000 records), only a small fraction of the data is made up of the government data set. 
+
+2. Both data sets represent only a small portion of the city Lahore.
+
+#### Question 6.3
+What would you recommend the Prime Minister do? Does your proposed sampling strategy rely more on government or on crowd-sourced data? Why might that be the case?
+
+I would recommend that the Prime Minister increase the coverage area for air pollution monitoring stations to improve the distribution of where these monitoring sites are located.
+Expanding the network of monitoring stations will ensure that data collection is more representative of different regions, particularly in areas that are currently under-represented.
+Additionally, I would suggest to rely more crowdsourcing data by providing incentives to get more volunteers to install pollution monitors in their homes.
+This approach will help remove the political biases.
